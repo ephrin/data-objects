@@ -4,7 +4,7 @@ namespace Ephrin\Immutable;
 
 class DocStructure
 {
-    /** @var PropertyType[] */
+    /** @var DocProperty[] */
     private $properties;
 
     /** @var array */
@@ -15,14 +15,14 @@ class DocStructure
 
     /**
      * @param string $class FQCN
-     * @param array $properties
+     * @param DocProperty[] $properties
      * @param array $defaults
      */
     public function __construct($class, array $properties, array $defaults = [])
     {
         $this->class = $class;
         $this->properties = $properties;
-        $this->values = $defaults;
+        $this->values = array_intersect_key($defaults, $properties);
     }
 
     /**
@@ -56,39 +56,39 @@ class DocStructure
     }
 
     /**
-     * @param mixed $name
+     * @param mixed $propertyName
      * @return mixed|null
      * @throws \RuntimeException
      */
-    public function readProperty($name)
+    public function readValue($propertyName)
     {
-        if (isset($this->properties[$name])) {
-            return isset($this->values[$name]) ? $this->values[$name] : null;
+        if (isset($this->properties[$propertyName])) {
+            return isset($this->values[$propertyName]) ? $this->values[$propertyName] : null;
         }
 
         throw new \RuntimeException(
-            sprintf('Property `%s` of `%s` does not exists', $name, $this->class)
+            sprintf('DocProperty `%s` of `%s` does not exists', $propertyName, $this->class)
         );
     }
 
     /**
-     * @param string $name
+     * @param string $propertyName
      * @param mixed $value
      * @throws \RuntimeException
      */
-    public function writeProperty($name, $value)
+    public function writeValue($propertyName, $value)
     {
-        if (!isset($this->properties[$name])) {
+        if (!isset($this->properties[$propertyName])) {
             throw new \RuntimeException(
-                sprintf('Can not access. No such property %s of %s.', $name, $this->class)
+                sprintf('Can not access. No such property `%s` of `%s`.', $propertyName, $this->class)
             );
         }
-        if (!$this->properties[$name]->writable) {
+        if (!$this->properties[$propertyName]->writable) {
             throw new \RuntimeException(
-                sprintf('Can not store value. Property %s of %s is not writable.', $name, $this->class)
+                sprintf('Can not store value. DocProperty `%s` of `%s` is not writable.', $propertyName, $this->class)
             );
         }
 
-        $this->values[$name] = $value;
+        $this->values[$propertyName] = call_user_func($this->properties[$propertyName]->valueGate, $value);
     }
 }

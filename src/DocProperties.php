@@ -13,7 +13,7 @@ trait DocProperties
      */
     public function __get($name)
     {
-        return $this->getStructure()->readProperty($name);
+        return $this->getStructure()->readValue($name);
     }
 
     /**
@@ -22,7 +22,7 @@ trait DocProperties
      */
     public function __set($name, $value)
     {
-        $this->getStructure()->writeProperty($name, $value);
+        $this->getStructure()->writeValue($name, $value);
     }
 
     /**
@@ -31,7 +31,7 @@ trait DocProperties
      */
     public function __isset($name)
     {
-        return $this->getStructure()->hasProperty($name);
+        return $this->getStructure()->issetValue($name);
     }
 
     /**
@@ -45,12 +45,26 @@ trait DocProperties
     /**
      * @return DocStructure
      */
-    private function getStructure()
+    protected function getStructure()
     {
         if (null === $this->structure) {
-            $this->structure = StructureFactory::create($this);
+            $this->structure = DocStructureFactory::create($this);
         }
 
         return $this->structure;
+    }
+
+    /**
+     * @internal array $data
+     * @internal mixed $constructorArgs...
+     * @return static
+     */
+    public static function fromArray()
+    {
+        $args = func_get_args();
+        $data = array_shift($args);
+        $instance = (new \ReflectionClass(static::class))->newInstanceArgs($args);
+        $instance->structure = DocStructureFactory::create($instance, $data);
+        return $instance;
     }
 }
