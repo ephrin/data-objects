@@ -10,23 +10,23 @@ class DocProperty
     /** @var boolean */
     public $writable;
 
+    /** @var boolean */
+    public $readable;
+
     /** @var callable */
     public $valueGate;
 
     /**
      * @param string $type
      * @param boolean $writable
+     * @param boolean $readable
      * @param callable $valueGate
      */
-    public function __construct($type, $writable, callable $valueGate = null)
+    public function __construct($type, $writable, $readable, callable $valueGate)
     {
         $this->type = $type;
         $this->writable = $writable;
-        $this->valueGate = $valueGate ?: [self::class, 'proxy'];
-    }
-
-    public static function proxy($value)
-    {
-        return $value;
+        $this->readable = $readable;
+        $this->valueGate = $valueGate;
     }
 }

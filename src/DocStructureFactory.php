@@ -6,6 +6,7 @@ use phpDocumentor\Reflection\DocBlock\Tags\Property;
 use phpDocumentor\Reflection\DocBlock\Tags\PropertyRead;
 use phpDocumentor\Reflection\DocBlock\Tags\PropertyWrite;
 use phpDocumentor\Reflection\DocBlockFactory;
+use SebastianBergmann\GlobalState\RuntimeException;
 
 class DocStructureFactory
 {
@@ -19,17 +20,21 @@ class DocStructureFactory
         $class = get_class($object);
 
         if (!isset(self::$annotations[$class])) {
-            self::$annotations[$class] = self::readProperties($class);
+            self::$annotations[$class] = self::readProperties($object, $class);
         }
 
-        return new DocStructure($class, self::$annotations[$class], $defaults);
+        return new DocStructure($object, self::$annotations[$class], $defaults);
     }
 
     /**
+     * @param object $instance
      * @param string $class
      * @return array
+     * @throws \LogicException
+     * @throws \InvalidArgumentException
+     * @throws \ReflectionException
      */
-    private static function readProperties($class)
+    private static function readProperties($instance, $class)
     {
         $factory = DocBlockFactory::createInstance();
         $reflection = new \ReflectionClass($class);
@@ -40,10 +45,24 @@ class DocStructureFactory
             foreach ($docBlock->getTagsByName($tag) as $item) {
                 /** @var DocProperty|PropertyWrite|PropertyRead $item */
                 $type = strtolower($item->getType());
+                $propertyName = $item->getVariableName();
+                if ($instance instanceof Immutable && $item instanceof PropertyWrite) {
+                    throw new \LogicException(
+                        sprintf(
+                            'Mutable property `%s` of %s is declared (@%s) while object is immutable. ' .
+                            'It is not possible to change state of immutable object as class implements %s.',
+                            $propertyName,
+                            get_class($instance),
+                            $tag,
+                            Immutable::class
+                        )
+                    );
+                }
                 $properties[$item->getVariableName()] = new DocProperty(
                     $type,
                     $item instanceof Property || $item instanceof PropertyWrite,
-                    self::valueGateCallback($type, $class)
+                    !$item instanceof PropertyWrite,
+                    self::valueGateCallback($type, $instance, $propertyName)
                 );
             }
         }
@@ -51,18 +70,48 @@ class DocStructureFactory
         return $properties;
     }
 
-    private static function valueGateCallback($type, $class)
+    /**
+     * @param string $type
+     * @param object $instance
+     * @param string $propertyName
+     * @return \Closure
+     * @throws \InvalidArgumentException
+     */
+    private static function valueGateCallback($type, $instance, $propertyName)
     {
-        //todo find out cb
-        static $nv;
+        $typeValidation = self::typeValidationCb($type);
 
-        if (!$nv) {
-            $nv = function ($value) {
+        if ($instance instanceof Strict) {
+            $typeValidation = function ($value) use ($typeValidation, $type, $instance, $propertyName) {
+                if (!$typeValidation($value)) {
+                    throw new \InvalidArgumentException(
+                        sprintf(
+                            'Unexpected type %s for property %s in %s. Type of %s is expected.',
+                            is_object($value) ? get_class($value) : gettype($value),
+                            $propertyName,
+                            get_class($instance),
+                            $type
+                        )
+                    );
+                }
+            };
+        }
+
+        if (self::canCastType($type)) {
+            return function ($value) use ($typeValidation, $type) {
+                if (!$typeValidation($value)) {
+                    settype($value, $type);
+                }
+
                 return $value;
             };
         }
 
-        return $nv;
+        return function ($value) use ($typeValidation) {
+            $typeValidation($value);
+
+            return $value;
+        };
     }
 
     private static function typeValidationCb($type)
@@ -77,7 +126,7 @@ class DocStructureFactory
             };
         }
 
-        if (class_exists($type, true)) {
+        if (class_exists($type)) {
             return function ($value) use ($type) {
                 return $value instanceof $type;
             };
@@ -86,6 +135,15 @@ class DocStructureFactory
         throw new \InvalidArgumentException(
             sprintf('Unknown test for type `%s`.' .
                 ' Supported are those one that can be tested with is_xxx function, mixed and object instances.', $type)
+        );
+    }
+
+    private static function canCastType($type)
+    {
+        return in_array(
+            $type,
+            ['bool', 'boolean', 'int', 'integer', 'string', 'float', 'double', 'array', 'object', 'null'],
+            true
         );
     }
 }

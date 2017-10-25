@@ -34,10 +34,4 @@ class DocStructureTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($this->structure->hasProperty('none'));
         $this->assertTrue($this->structure->hasProperty('some'));
     }
-
-    public function hasWritableProperty()
-    {
-        $this->assertTrue($this->structure->hasWritableProperty('some'));
-        $this->assertFalse($this->structure->hasWritableProperty('immutable'));
-    }
 }

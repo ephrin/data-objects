@@ -8,21 +8,48 @@ class DocStructure
     private $properties;
 
     /** @var array */
-    private $values;
+    private $values = [];
 
     /** @var string */
-    private $class;
+    private $instance;
 
     /**
-     * @param string $class FQCN
+     * @param string $instance FQCN
      * @param DocProperty[] $properties
      * @param array $defaults
+     * @throws \InvalidArgumentException
      */
-    public function __construct($class, array $properties, array $defaults = [])
+    public function __construct($instance, array $properties, array $defaults = [])
     {
-        $this->class = $class;
+        $this->instance = $instance;
+
+        if (!method_exists($this->instance, 'defaults')) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Inproper instance retrieved. Please make sure %s trait is implemented in %s',
+                    DocProperties::class,
+                    get_class($this->instance)
+                )
+            );
+        }
+
         $this->properties = $properties;
-        $this->values = array_intersect_key($defaults, $properties);
+        $this->init(array_merge_recursive(call_user_func([$this->instance, 'defaults']), $defaults));
+    }
+
+    private function init(array $defaults = [])
+    {
+        foreach ($defaults as $propertyName => $value) {
+            if (isset($this->properties[$propertyName])) {
+                $type = $this->properties[$propertyName];
+                if (class_exists($type) && method_exists($type, 'fromArray')) {
+                    if(is_array($value)){
+                        $value = call_user_func([$type, 'fromArray'], $value);
+                    }
+                }
+                $this->values[$propertyName] = $this->properties[$propertyName]->valueGate($value);
+            }
+        }
     }
 
     /**
@@ -32,15 +59,6 @@ class DocStructure
     public function hasProperty($name)
     {
         return isset($this->properties[$name]);
-    }
-
-    /**
-     * @param string $name
-     * @return bool
-     */
-    public function hasWritableProperty($name)
-    {
-        return isset($this->properties[$name]) && $this->properties[$name]->writable;
     }
 
     public function issetValue($propertyName)
@@ -66,8 +84,22 @@ class DocStructure
             return isset($this->values[$propertyName]) ? $this->values[$propertyName] : null;
         }
 
+        if(false === $this->properties[$propertyName]->readable){
+            throw new \RuntimeException(
+                sprintf(
+                    'Can not access value of property `%s` in `%s` as it is not readable.',
+                    $propertyName,
+                    get_class($this->instance)
+                )
+            );
+        }
+
         throw new \RuntimeException(
-            sprintf('DocProperty `%s` of `%s` does not exists', $propertyName, $this->class)
+            sprintf(
+                'Property `%s` of `%s` does not exists or not declared.',
+                $propertyName,
+                get_class($this->instance)
+            )
         );
     }
 
@@ -80,15 +112,29 @@ class DocStructure
     {
         if (!isset($this->properties[$propertyName])) {
             throw new \RuntimeException(
-                sprintf('Can not access. No such property `%s` of `%s`.', $propertyName, $this->class)
+                sprintf('No such property `%s` of `%s`.', $propertyName, get_class($this->instance))
             );
         }
-        if (!$this->properties[$propertyName]->writable) {
+        if (false === $this->properties[$propertyName]->writable) {
             throw new \RuntimeException(
-                sprintf('Can not store value. DocProperty `%s` of `%s` is not writable.', $propertyName, $this->class)
+                sprintf(
+                    'Can not store value into property `%s` of `%s`. It is not writable.',
+                    $propertyName,
+                    get_class($this->instance)
+                )
             );
         }
 
-        $this->values[$propertyName] = call_user_func($this->properties[$propertyName]->valueGate, $value);
+        $this->values[$propertyName] = $this->properties[$propertyName]->valueGate($value);
+    }
+
+    public function toArray()
+    {
+        $array = [];
+        foreach (array_keys($this->properties) as $propertyName) {
+            $array[$propertyName] = $this->readValue($propertyName);
+        }
+
+        return $array;
     }
 }

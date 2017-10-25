@@ -9,7 +9,7 @@ use Ephrin\Immutable\DocProperties;
  * @property-read integer $integerProperty
  * @property-write boolean $booleanProperty
  */
-class DocPropertiesObjectStub
+class SimpleStub
 {
     use DocProperties;
 }

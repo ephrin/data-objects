@@ -7,6 +7,32 @@ trait DocProperties
     /** @var DocStructure */
     private $structure;
 
+    private $properties;
+
+    /**
+     * @internal array $data
+     * @internal mixed $constructorArgs...
+     * @return static
+     * @throws \ReflectionException
+     */
+    public static function fromArray()
+    {
+        $args = func_get_args();
+        $data = array_shift($args);
+        $instance = (new \ReflectionClass(static::class))->newInstanceArgs($args);
+        $instance->structure = DocStructureFactory::create($instance, $data);
+
+        return $instance;
+    }
+
+    /**
+     * @return array
+     */
+    public function defaults()
+    {
+        return [];
+    }
+
     /**
      * @param string $name
      * @return mixed
@@ -43,28 +69,20 @@ trait DocProperties
     }
 
     /**
+     * @param array $initArgs
      * @return DocStructure
      */
-    protected function getStructure()
+    protected function getStructure(array $initArgs = [])
     {
         if (null === $this->structure) {
-            $this->structure = DocStructureFactory::create($this);
+            $this->structure = DocStructureFactory::create($this, $initArgs);
         }
 
         return $this->structure;
     }
 
-    /**
-     * @internal array $data
-     * @internal mixed $constructorArgs...
-     * @return static
-     */
-    public static function fromArray()
+    public function __debugInfo()
     {
-        $args = func_get_args();
-        $data = array_shift($args);
-        $instance = (new \ReflectionClass(static::class))->newInstanceArgs($args);
-        $instance->structure = DocStructureFactory::create($instance, $data);
-        return $instance;
+        return $this->getStructure()->toArray();
     }
 }
