@@ -8,7 +8,7 @@ class DocStructure
     private $properties;
 
     /** @var array */
-    private $values = [];
+    public $values = [];
 
     /** @var string */
     private $instance;
@@ -22,32 +22,23 @@ class DocStructure
     public function __construct($instance, array $properties, array $defaults = [])
     {
         $this->instance = $instance;
-
-        if (!method_exists($this->instance, 'defaults')) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'Inproper instance retrieved. Please make sure %s trait is implemented in %s',
-                    DocProperties::class,
-                    get_class($this->instance)
-                )
-            );
-        }
-
         $this->properties = $properties;
-        $this->init(array_merge_recursive(call_user_func([$this->instance, 'defaults']), $defaults));
+        $this->init($defaults);
     }
 
     private function init(array $defaults = [])
     {
-        foreach ($defaults as $propertyName => $value) {
+        foreach ($defaults as $propertyName => $defaultValue) {
             if (isset($this->properties[$propertyName])) {
-                $type = $this->properties[$propertyName];
+                $type = $this->properties[$propertyName]->type;
+
                 if (class_exists($type) && method_exists($type, 'fromArray')) {
-                    if(is_array($value)){
-                        $value = call_user_func([$type, 'fromArray'], $value);
+                    if (is_array($defaultValue)) {
+                        $defaultValue = call_user_func([$type, 'fromArray'], $defaultValue);
                     }
                 }
-                $this->values[$propertyName] = $this->properties[$propertyName]->valueGate($value);
+                $this->values[$propertyName] = call_user_func($this->properties[$propertyName]->valueGate,
+                    $defaultValue);
             }
         }
     }
@@ -63,6 +54,10 @@ class DocStructure
 
     public function issetValue($propertyName)
     {
+        if (false === $this->properties[$propertyName]->readable) {
+            return false;
+        }
+
         return isset($this->values[$propertyName]);
     }
 
@@ -81,17 +76,17 @@ class DocStructure
     public function readValue($propertyName)
     {
         if (isset($this->properties[$propertyName])) {
-            return isset($this->values[$propertyName]) ? $this->values[$propertyName] : null;
-        }
+            if (false === $this->properties[$propertyName]->readable) {
+                throw new \RuntimeException(
+                    sprintf(
+                        'Can not read property `%s->$%s`. Write only access.',
+                        get_class($this->instance),
+                        $propertyName
+                    )
+                );
+            }
 
-        if(false === $this->properties[$propertyName]->readable){
-            throw new \RuntimeException(
-                sprintf(
-                    'Can not access value of property `%s` in `%s` as it is not readable.',
-                    $propertyName,
-                    get_class($this->instance)
-                )
-            );
+            return isset($this->values[$propertyName]) ? $this->values[$propertyName] : null;
         }
 
         throw new \RuntimeException(
@@ -125,7 +120,7 @@ class DocStructure
             );
         }
 
-        $this->values[$propertyName] = $this->properties[$propertyName]->valueGate($value);
+        $this->values[$propertyName] = call_user_func($this->properties[$propertyName]->valueGate, $value);
     }
 
     public function toArray()

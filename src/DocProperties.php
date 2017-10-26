@@ -7,7 +7,7 @@ trait DocProperties
     /** @var DocStructure */
     private $structure;
 
-    private $properties;
+    private $defaults = [];
 
     /**
      * @internal array $data
@@ -25,12 +25,17 @@ trait DocProperties
         return $instance;
     }
 
+    public function __construct(array $defaults = [])
+    {
+        $this->defaults = $defaults;
+    }
+
     /**
      * @return array
      */
-    public function defaults()
+    public function getDefaults()
     {
-        return [];
+        return $this->defaults;
     }
 
     /**
@@ -40,6 +45,11 @@ trait DocProperties
     public function __get($name)
     {
         return $this->getStructure()->readValue($name);
+    }
+
+    protected function getValue($propertyName)
+    {
+        return $this->getStructure()->values[$propertyName];
     }
 
     /**
@@ -69,13 +79,12 @@ trait DocProperties
     }
 
     /**
-     * @param array $initArgs
      * @return DocStructure
      */
-    protected function getStructure(array $initArgs = [])
+    protected function getStructure()
     {
         if (null === $this->structure) {
-            $this->structure = DocStructureFactory::create($this, $initArgs);
+            $this->structure = DocStructureFactory::create($this, $this->getDefaults());
         }
 
         return $this->structure;

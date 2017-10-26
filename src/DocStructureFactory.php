@@ -36,10 +36,9 @@ class DocStructureFactory
      */
     private static function readProperties($instance, $class)
     {
-        $factory = DocBlockFactory::createInstance();
         $reflection = new \ReflectionClass($class);
         $comment = $reflection->getDocComment();
-        $docBlock = $factory->create($comment);
+        $docBlock = DocBlockFactory::createInstance()->create($comment);
         $properties = [];
         foreach (['property' => true, 'property-write' => true, 'property-read' => false] as $tag => $writable) {
             foreach ($docBlock->getTagsByName($tag) as $item) {
@@ -50,7 +49,8 @@ class DocStructureFactory
                     throw new \LogicException(
                         sprintf(
                             'Mutable property `%s` of %s is declared (@%s) while object is immutable. ' .
-                            'It is not possible to change state of immutable object as class implements %s.',
+                            'It is not possible to change state of immutable object as class implements %s. ' .
+                            'Please consider removing such property.',
                             $propertyName,
                             get_class($instance),
                             $tag,
@@ -62,7 +62,7 @@ class DocStructureFactory
                     $type,
                     $item instanceof Property || $item instanceof PropertyWrite,
                     !$item instanceof PropertyWrite,
-                    self::valueGateCallback($type, $instance, $propertyName)
+                    self::valueGateCallback($type, get_class($instance), $propertyName)
                 );
             }
         }
@@ -72,24 +72,24 @@ class DocStructureFactory
 
     /**
      * @param string $type
-     * @param object $instance
+     * @param string $class
      * @param string $propertyName
      * @return \Closure
      * @throws \InvalidArgumentException
      */
-    private static function valueGateCallback($type, $instance, $propertyName)
+    private static function valueGateCallback($type, $class, $propertyName)
     {
         $typeValidation = self::typeValidationCb($type);
 
-        if ($instance instanceof Strict) {
-            $typeValidation = function ($value) use ($typeValidation, $type, $instance, $propertyName) {
+        if ($class instanceof Strict) {
+            $typeValidation = function ($value) use ($typeValidation, $type, $class, $propertyName) {
                 if (!$typeValidation($value)) {
                     throw new \InvalidArgumentException(
                         sprintf(
                             'Unexpected type %s for property %s in %s. Type of %s is expected.',
                             is_object($value) ? get_class($value) : gettype($value),
                             $propertyName,
-                            get_class($instance),
+                            $class,
                             $type
                         )
                     );
