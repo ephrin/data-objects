@@ -2,6 +2,7 @@
 
 namespace Ephrin\Immutable\Tests;
 
+use Ephrin\Immutable\Tests\Stubs\DataWithDefaultsInMethod;
 use Ephrin\Immutable\Tests\Stubs\PropertyWriteStub;
 use Ephrin\Immutable\Tests\Stubs\SimpleStub;
 
@@ -9,11 +10,9 @@ class DocPropertiesTest extends \PHPUnit_Framework_TestCase
 {
     public function testReadConstructDefaults()
     {
-        /**
-         * Class annotations
-         * @property string $stringProperty
-         * @property-read integer $integerProperty
-         */
+        // Class docBlock annotations
+        // @property string $stringProperty
+        // @property-read integer $integerProperty
         $simple = SimpleStub::fromArray(
             [
                 'stringProperty' => 'string', //usual
@@ -27,10 +26,8 @@ class DocPropertiesTest extends \PHPUnit_Framework_TestCase
 
     public function testWriteOnlyPropertyWrites()
     {
-        /**
-         * Class annotations
-         * @property-write string $writeOnlyProperty
-         */
+        // Class annotations
+        // @property-write string $writeOnlyProperty
         $pws = new PropertyWriteStub(['writeOnlyProperty' => 'initial value']);
 
         self::assertSame('initial value', $pws->getWriteOnlyProperty());
@@ -40,19 +37,27 @@ class DocPropertiesTest extends \PHPUnit_Framework_TestCase
         self::assertSame('changed value', $pws->getWriteOnlyProperty());
     }
 
+    public function testWriteCast()
+    {
+        
+    }
+
     public function testWriteOnlyPropertyException()
     {
-        /**
-         * Class annotations
-         * @property-write string $writeOnlyProperty
-         */
+        // Class annotations
+        // @property-write string $writeOnlyProperty
         $pws = new PropertyWriteStub(['writeOnlyProperty' => 'initial value']);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Can not read property');
 
-        /** @noinspection Annotator */
-        /** @noinspection PhpUnusedLocalVariableInspection */
-        $try = $pws->writeOnlyProperty;
+        $propertyName = 'writeOnlyProperty'; //to ignore IDE error we will use var prop access
+        $var = $pws->{$propertyName};
+    }
+
+    public function testDefaultsInMethod()
+    {
+        $obj = new DataWithDefaultsInMethod();
+        self::assertSame('simple', $obj->type);
     }
 }

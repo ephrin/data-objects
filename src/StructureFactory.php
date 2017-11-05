@@ -2,72 +2,38 @@
 
 namespace Ephrin\Immutable;
 
-use phpDocumentor\Reflection\DocBlock\Tags\Property;
-use phpDocumentor\Reflection\DocBlock\Tags\PropertyRead;
-use phpDocumentor\Reflection\DocBlock\Tags\PropertyWrite;
-use phpDocumentor\Reflection\DocBlockFactory;
-use SebastianBergmann\GlobalState\RuntimeException;
-
-class DocStructureFactory
+class StructureFactory
 {
     /**
      * @var array
      */
     private static $annotations = [];
 
-    public static function create($object, array $defaults = [])
+    /**
+     * @param PropertyDriver $driver
+     * @param object $object
+     * @param array $defaults
+     * @return Structure
+     * @throws \InvalidArgumentException
+     */
+    public static function create(PropertyDriver $driver, $object, array $defaults = [])
     {
         $class = get_class($object);
-
         if (!isset(self::$annotations[$class])) {
-            self::$annotations[$class] = self::readProperties($object, $class);
-        }
+            $properties = [];
+            foreach ($driver->properties($object) as $property) {
+                $property->valueGate = self::valueGateCallback($property->type, get_class($object), $property->name);
 
-        return new DocStructure($object, self::$annotations[$class], $defaults);
-    }
-
-    /**
-     * @param object $instance
-     * @param string $class
-     * @return array
-     * @throws \LogicException
-     * @throws \InvalidArgumentException
-     * @throws \ReflectionException
-     */
-    private static function readProperties($instance, $class)
-    {
-        $reflection = new \ReflectionClass($class);
-        $comment = $reflection->getDocComment();
-        $docBlock = DocBlockFactory::createInstance()->create($comment);
-        $properties = [];
-        foreach (['property' => true, 'property-write' => true, 'property-read' => false] as $tag => $writable) {
-            foreach ($docBlock->getTagsByName($tag) as $item) {
-                /** @var DocProperty|PropertyWrite|PropertyRead $item */
-                $type = strtolower($item->getType());
-                $propertyName = $item->getVariableName();
-                if ($instance instanceof Immutable && $item instanceof PropertyWrite) {
-                    throw new \LogicException(
-                        sprintf(
-                            'Mutable property `%s` of %s is declared (@%s) while object is immutable. ' .
-                            'It is not possible to change state of immutable object as class implements %s. ' .
-                            'Please consider removing such property.',
-                            $propertyName,
-                            get_class($instance),
-                            $tag,
-                            Immutable::class
-                        )
-                    );
+                if (isset($defaults[$property->name])) {
+                    $property->defaultValue = call_user_func($property->valueGate, $defaults[$property->name]);
                 }
-                $properties[$item->getVariableName()] = new DocProperty(
-                    $type,
-                    $item instanceof Property || $item instanceof PropertyWrite,
-                    !$item instanceof PropertyWrite,
-                    self::valueGateCallback($type, get_class($instance), $propertyName)
-                );
+
+                $properties[$property->name] = $property;
             }
+            self::$annotations[$class] = $properties;
         }
 
-        return $properties;
+        return new Structure($class, self::$annotations[$class], $defaults);
     }
 
     /**

@@ -2,14 +2,14 @@
 
 namespace Ephrin\Immutable\Tests\Stubs;
 
-use Ephrin\Immutable\DocProperties;
+use Ephrin\Immutable\DocBlockProperties;
 
 /**
  * @property-write string $writeOnlyProperty
  */
 class PropertyWriteStub
 {
-    use DocProperties;
+    use DocBlockProperties;
 
     public function getWriteOnlyProperty()
     {

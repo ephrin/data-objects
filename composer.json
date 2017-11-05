@@ -20,9 +20,11 @@
         }
     },
     "require": {
+        "php": ">5.6",
         "phpdocumentor/reflection-docblock": "^3.1"
     },
     "require-dev": {
+        "php": "^7.0",
         "phpunit/phpunit": "^5.7"
     }
 }

@@ -2,12 +2,14 @@
 
 namespace Ephrin\Immutable;
 
-trait DocProperties
+use Ephrin\Immutable\PropertyDriver\DocPropertyDriver;
+
+trait DocBlockProperties
 {
-    /** @var DocStructure */
+    /** @var Structure */
     private $structure;
 
-    private $defaults = [];
+    private $_defaults = [];
 
     /**
      * @internal array $data
@@ -20,14 +22,16 @@ trait DocProperties
         $args = func_get_args();
         $data = array_shift($args);
         $instance = (new \ReflectionClass(static::class))->newInstanceArgs($args);
-        $instance->structure = DocStructureFactory::create($instance, $data);
+
+        $driver = new DocPropertyDriver();
+        $instance->structure = StructureFactory::create($driver, $instance, $data);
 
         return $instance;
     }
 
     public function __construct(array $defaults = [])
     {
-        $this->defaults = $defaults;
+        $this->_defaults = $defaults;
     }
 
     /**
@@ -35,7 +39,7 @@ trait DocProperties
      */
     public function getDefaults()
     {
-        return $this->defaults;
+        return $this->_defaults;
     }
 
     /**
@@ -49,7 +53,7 @@ trait DocProperties
 
     protected function getValue($propertyName)
     {
-        return $this->getStructure()->values[$propertyName];
+        return $this->getStructure()->getProperty($propertyName)->value;
     }
 
     /**
@@ -79,12 +83,13 @@ trait DocProperties
     }
 
     /**
-     * @return DocStructure
+     * @return Structure
+     * @throws \InvalidArgumentException
      */
     protected function getStructure()
     {
         if (null === $this->structure) {
-            $this->structure = DocStructureFactory::create($this, $this->getDefaults());
+            $this->structure = StructureFactory::create(new DocPropertyDriver(), $this, $this->getDefaults());
         }
 
         return $this->structure;

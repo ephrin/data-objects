@@ -1,6 +1,11 @@
 <?php
 
+class abra {
 
-use Ephrin\Immutable\DocProperties;
+}
 
-require_once 'vendor/autoload.php';
+$a = new abra();
+
+$a->somePropety = 42;
+
+var_dump($a);

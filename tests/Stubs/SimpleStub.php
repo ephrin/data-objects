@@ -2,7 +2,7 @@
 
 namespace Ephrin\Immutable\Tests\Stubs;
 
-use Ephrin\Immutable\DocProperties;
+use Ephrin\Immutable\DocBlockProperties;
 
 /**
  * @property string $stringProperty
@@ -10,5 +10,5 @@ use Ephrin\Immutable\DocProperties;
  */
 class SimpleStub
 {
-    use DocProperties;
+    use DocBlockProperties;
 }
