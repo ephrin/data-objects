@@ -2,7 +2,7 @@
 
 namespace Ephrin\Immutable;
 
-use Ephrin\Immutable\PropertyDriver\DocPropertyDriver;
+use Ephrin\Immutable\PropertyDriver\DocPropertyMetaReader;
 
 trait DocBlockProperties
 {
@@ -23,7 +23,7 @@ trait DocBlockProperties
         $data = array_shift($args);
         $instance = (new \ReflectionClass(static::class))->newInstanceArgs($args);
 
-        $driver = new DocPropertyDriver();
+        $driver = new DocPropertyMetaReader();
         $instance->structure = StructureFactory::create($driver, $instance, $data);
 
         return $instance;
@@ -45,15 +45,25 @@ trait DocBlockProperties
     /**
      * @param string $name
      * @return mixed
+     * @throws \InvalidArgumentException
+     * @throws \Ephrin\Immutable\Exception\NoSuchPropertyException
+     * @throws \Ephrin\Immutable\Exception\PropertyAccessException
      */
     public function __get($name)
     {
-        return $this->getStructure()->readValue($name);
+        return $this->getStructure()->getProperty($name)->tryRead();
     }
 
     protected function getValue($propertyName)
     {
         return $this->getStructure()->getProperty($propertyName)->value;
+    }
+
+    protected function setValue($propertyName, $value)
+    {
+        $property = $this->getStructure()->getProperty($propertyName);
+
+        $property->value = call_user_func($property->valueGate, $value);
     }
 
     /**
@@ -62,7 +72,7 @@ trait DocBlockProperties
      */
     public function __set($name, $value)
     {
-        $this->getStructure()->writeValue($name, $value);
+        $this->getStructure()->trySet($name, $value);
     }
 
     /**
@@ -89,7 +99,7 @@ trait DocBlockProperties
     protected function getStructure()
     {
         if (null === $this->structure) {
-            $this->structure = StructureFactory::create(new DocPropertyDriver(), $this, $this->getDefaults());
+            $this->structure = StructureFactory::create(new DocPropertyMetaReader(), $this, $this->getDefaults());
         }
 
         return $this->structure;

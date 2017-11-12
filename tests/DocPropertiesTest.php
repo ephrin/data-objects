@@ -37,24 +37,6 @@ class DocPropertiesTest extends \PHPUnit_Framework_TestCase
         self::assertSame('changed value', $pws->getWriteOnlyProperty());
     }
 
-    public function testWriteCast()
-    {
-        
-    }
-
-    public function testWriteOnlyPropertyException()
-    {
-        // Class annotations
-        // @property-write string $writeOnlyProperty
-        $pws = new PropertyWriteStub(['writeOnlyProperty' => 'initial value']);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Can not read property');
-
-        $propertyName = 'writeOnlyProperty'; //to ignore IDE error we will use var prop access
-        $var = $pws->{$propertyName};
-    }
-
     public function testDefaultsInMethod()
     {
         $obj = new DataWithDefaultsInMethod();

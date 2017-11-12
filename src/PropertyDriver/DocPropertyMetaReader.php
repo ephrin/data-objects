@@ -3,20 +3,39 @@
 namespace Ephrin\Immutable\PropertyDriver;
 
 use Ephrin\Immutable\Immutable;
-use Ephrin\Immutable\Property;
-use Ephrin\Immutable\PropertyDriver;
+use Ephrin\Immutable\MetaReader;
+use Ephrin\Immutable\PropertyMeta;
 use phpDocumentor\Reflection\DocBlock\Tags as phpDoc;
 use phpDocumentor\Reflection\DocBlockFactory;
 
-class DocPropertyDriver implements PropertyDriver
+class DocPropertyMetaReader implements MetaReader
 {
-    public function properties($instance, array $defaults = [])
+    /**
+     * @var PropertyMeta[][]
+     */
+    static protected $meta = [];
+
+    /**
+     * @param object $instance
+     * @param array $defaults
+     * @return \Ephrin\Immutable\PropertyMeta[]
+     * @throws \ReflectionException
+     * @throws \LogicException
+     */
+    public function readMeta($instance, array $defaults = [])
     {
         $class = get_class($instance);
+
+        if (isset(self::$meta[$class])) {
+            return self::$meta[$class];
+        }
+
+        $metas = [];
+
         $reflection = new \ReflectionClass($class);
         $comment = $reflection->getDocComment();
         $docBlock = DocBlockFactory::createInstance()->create($comment);
-        $properties = [];
+
         foreach (['property' => true, 'property-write' => true, 'property-read' => false] as $tag => $writable) {
             foreach ($docBlock->getTagsByName($tag) as $item) {
                 /** @var phpDoc\Property|phpDoc\PropertyWrite|phpDoc\PropertyRead $item */
@@ -34,16 +53,15 @@ class DocPropertyDriver implements PropertyDriver
                         )
                     );
                 }
-                $property = new Property;
-                $property->name = $propertyName;
-                $property->type = $type;
-                $property->readable = !$item instanceof phpDoc\PropertyWrite;
-                $property->writable = $item instanceof phpDoc\Property || !$item instanceof phpDoc\PropertyRead;
-
-                yield $property;
+                $meta = new PropertyMeta();
+                $meta->name = $propertyName;
+                $meta->type = $type;
+                $meta->readable = !$item instanceof phpDoc\PropertyWrite;
+                $meta->writable = $item instanceof phpDoc\Property || !$item instanceof phpDoc\PropertyRead;
+                $metas[$propertyName] = $meta;
             }
         }
 
-        return $properties;
+        return self::$meta[$class] = $metas;
     }
 }

@@ -15,33 +15,34 @@ class Structure
     /**
      * @param string $class FQCN
      * @param Property[] $properties
-     * @throws \InvalidArgumentException
+     * @param array $defaults
      */
-    public function __construct($class, array $properties)
+    public function __construct($class, array $properties, array $defaults = [])
     {
-        $this->class = $class;
-        $this->init($properties);
+        $this->init($class, $properties, $defaults);
     }
 
     /**
-     * @param array|Property[] $properties
+     * @param string $class
+     * @param array $properties
+     * @param array $defaults
      */
-    private function init(array $properties)
+    private function init($class, array $properties, array $defaults)
     {
+        $this->class = $class;
         foreach ($properties as $property) {
-            if (null !== $property->defaultValue) {
-                $type = $property->type;
-                if (is_array($property->defaultValue) && (class_exists($type) && method_exists($type, 'fromArray'))) {
-                    $defaultValue = $type::fromArray($property->defaultValue);
-                } else {
-                    $defaultValue = $property->defaultValue;
+            /** @var Property $property */
+            $meta = $property->getMeta();
+            if (array_key_exists($meta->name, $defaults)) {
+                $defaultValue = $defaults[$meta->name];
+
+                if (is_array($defaultValue) && (class_exists($class) && method_exists($class, 'fromArray'))) {
+                    $defaultValue = $class::fromArray($defaultValue);
                 }
-                $property->value = call_user_func(
-                    $property->valueGate,
-                    $defaultValue
-                );
+
+                $property->set($defaultValue);
             }
-            $this->properties[$property->name] = $property;
+            $this->properties[$meta->name] = $property;
         }
     }
 
@@ -64,91 +65,15 @@ class Structure
         if (isset($this->properties[$name])) {
             return $this->properties[$name];
         }
-        throw new NoSuchPropertyException($name);
-    }
-
-    public function issetValue($propertyName)
-    {
-        if (isset($this->properties[$propertyName])) {
-            if (false === $this->properties[$propertyName]->readable) {
-                return false;
-            }
-
-            return null !== $this->properties[$propertyName]->value;
-        }
-
-        return false;
-    }
-
-    public function unsetValue($propertyName)
-    {
-        if (isset($this->properties[$propertyName])) {
-            unset($this->properties[$propertyName]->value);
-        }
-    }
-
-    /**
-     * @param mixed $propertyName
-     * @return mixed|null
-     * @throws \RuntimeException
-     */
-    public function readValue($propertyName)
-    {
-        if (isset($this->properties[$propertyName])) {
-            if (false === $this->properties[$propertyName]->readable) {
-                throw new \RuntimeException(
-                    sprintf(
-                        'Can not read property `%s->$%s`. Write only access.',
-                        $this->class,
-                        $propertyName
-                    )
-                );
-            }
-
-            return $this->properties[$propertyName]->value;
-        }
-
-        throw new \RuntimeException(
-            sprintf(
-                'Property `%s` of `%s` does not exists or not declared.',
-                $propertyName,
-                $this->class
-            )
-        );
-    }
-
-    /**
-     * @param string $propertyName
-     * @param mixed $value
-     * @throws \RuntimeException
-     */
-    public function writeValue($propertyName, $value)
-    {
-        if (!isset($this->properties[$propertyName])) {
-            throw new \RuntimeException(
-                sprintf('No such property `%s` of `%s`.', $propertyName, $this->class)
-            );
-        }
-        $property = $this->properties[$propertyName];
-        if (false === $property->writable) {
-            throw new \RuntimeException(
-                sprintf(
-                    'Can not store value into property `%s` of `%s`. It is not writable.',
-                    $propertyName,
-                    $this->class
-                )
-            );
-        }
-
-        $property->value = call_user_func($property->valueGate, $value);
+        throw new NoSuchPropertyException($name, $this->class);
     }
 
     public function toArray()
     {
         $array = [];
-        foreach ($this->properties as $property) {
-            if ($property->readable) {
-                $array[$property->name] = $property->value;
+        foreach ($this->properties as $name => $property) {
+            if ($property->readable()) {
+                $array[$name] = $property->get();
             }
         }
 
