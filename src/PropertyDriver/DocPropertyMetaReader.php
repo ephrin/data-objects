@@ -1,10 +1,10 @@
 <?php
 
-namespace Ephrin\Immutable\PropertyDriver;
+namespace Ephrin\DataObject\PropertyDriver;
 
-use Ephrin\Immutable\Immutable;
-use Ephrin\Immutable\MetaReader;
-use Ephrin\Immutable\PropertyMeta;
+use Ephrin\DataObject\Type\Immutable;
+use Ephrin\DataObject\MetaReader;
+use Ephrin\DataObject\PropertyMeta;
 use phpDocumentor\Reflection\DocBlock\Tags as phpDoc;
 use phpDocumentor\Reflection\DocBlockFactory;
 
@@ -13,12 +13,12 @@ class DocPropertyMetaReader implements MetaReader
     /**
      * @var PropertyMeta[][]
      */
-    static protected $meta = [];
+    static protected $metaCache = [];
 
     /**
      * @param object $instance
      * @param array $defaults
-     * @return \Ephrin\Immutable\PropertyMeta[]
+     * @return \Ephrin\DataObject\PropertyMeta[]
      * @throws \ReflectionException
      * @throws \LogicException
      */
@@ -26,8 +26,8 @@ class DocPropertyMetaReader implements MetaReader
     {
         $class = get_class($instance);
 
-        if (isset(self::$meta[$class])) {
-            return self::$meta[$class];
+        if (isset(self::$metaCache[$class])) {
+            return self::$metaCache[$class];
         }
 
         $metas = [];
@@ -41,27 +41,35 @@ class DocPropertyMetaReader implements MetaReader
                 /** @var phpDoc\Property|phpDoc\PropertyWrite|phpDoc\PropertyRead $item */
                 $type = strtolower($item->getType());
                 $propertyName = $item->getVariableName();
-                if ($instance instanceof Immutable && $item instanceof phpDoc\PropertyWrite) {
-                    throw new \LogicException(
-                        sprintf(
-                            'Mutable property `%s` of %s is declared (@%s) while object is immutable. ' .
-                            'It is not possible to change state of immutable object as class implements %s. ',
-                            $propertyName,
-                            get_class($instance),
-                            $tag,
-                            Immutable::class
-                        )
-                    );
-                }
+
                 $meta = new PropertyMeta();
                 $meta->name = $propertyName;
                 $meta->type = $type;
+
+                if ($instance instanceof Immutable){
+                    if($item instanceof phpDoc\PropertyWrite) {
+                        throw new \LogicException(
+                            sprintf(
+                                'Mutable property `%s` of %s is declared (@%s) while object is immutable. ' .
+                                'It is not possible to change state of immutable object as class implements %s.',
+                                $propertyName,
+                                get_class($instance),
+                                $tag,
+                                Immutable::class
+                            )
+                        );
+                    }
+                    $meta->writable = false;
+                } else {
+                    $meta->writable = $item instanceof phpDoc\Property || !$item instanceof phpDoc\PropertyRead;
+                }
+
                 $meta->readable = !$item instanceof phpDoc\PropertyWrite;
-                $meta->writable = $item instanceof phpDoc\Property || !$item instanceof phpDoc\PropertyRead;
+
                 $metas[$propertyName] = $meta;
             }
         }
 
-        return self::$meta[$class] = $metas;
+        return self::$metaCache[$class] = $metas;
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Ephrin\Immutable;
+namespace Ephrin\DataObject;
 
 class PropertyMeta
 {
@@ -11,7 +11,7 @@ class PropertyMeta
     public $type;
 
     /** @var string */
-    public $owner;
+    public $owningClass;
 
     /** @var boolean */
     public $readable;
@@ -22,17 +22,17 @@ class PropertyMeta
     /** @var string */
     public $valueGateFactoryClass = DefaultGateFactory::class;
 
-    protected $valueGate;
+    protected $valueGate = [];
 
     public function pass($value)
     {
-        if (!$this->valueGate) {
-            $this->valueGate = call_user_func(
-                $this->valueGateFactoryClass,
-                $this->type, $this->owner, $this->name
+        if (!isset($this->valueGate[$this->valueGateFactoryClass])) {
+            $this->valueGate[$this->valueGateFactoryClass] = call_user_func(
+                [$this->valueGateFactoryClass, 'create'],
+                $this->type, $this->owningClass, $this->name
             );
         }
 
-        return call_user_func($this->valueGate, $value);
+        return call_user_func($this->valueGate[$this->valueGateFactoryClass], $value);
     }
 }

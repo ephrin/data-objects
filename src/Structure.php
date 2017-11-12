@@ -1,8 +1,8 @@
 <?php
 
-namespace Ephrin\Immutable;
+namespace Ephrin\DataObject;
 
-use Ephrin\Immutable\Exception\NoSuchPropertyException;
+use Ephrin\DataObject\Exception\NoSuchPropertyException;
 
 class Structure
 {
@@ -57,8 +57,8 @@ class Structure
 
     /**
      * @param string $name
-     * @return Property|mixed
-     * @throws \Ephrin\Immutable\Exception\NoSuchPropertyException
+     * @return Property
+     * @throws \Ephrin\DataObject\Exception\NoSuchPropertyException
      */
     public function getProperty($name)
     {

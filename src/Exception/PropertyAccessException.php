@@ -1,6 +1,6 @@
 <?php
 
-namespace Ephrin\Immutable\Exception;
+namespace Ephrin\DataObject\Exception;
 
 class PropertyAccessException extends StructureException
 {

@@ -1,8 +1,8 @@
 <?php
 
-namespace Ephrin\Immutable\Tests\Stubs;
+namespace Ephrin\DataObject\Tests\Stubs;
 
-use Ephrin\Immutable\DocBlockProperties;
+use Ephrin\DataObject\DocBlockProperties;
 
 /**
  * @property string $stringProperty

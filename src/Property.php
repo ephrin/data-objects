@@ -1,25 +1,25 @@
 <?php
 
-namespace Ephrin\Immutable;
+namespace Ephrin\DataObject;
 
-use Ephrin\Immutable\Exception\PropertyAccessException;
+use Ephrin\DataObject\Exception\PropertyAccessException;
 
 class Property
 {
-    /** @var Property */
+    /** @var PropertyMeta */
     protected $meta;
 
     /** @var mixed */
     protected $value;
 
-    public function __construct(PropertyMeta $meta, $value)
+    public function __construct(PropertyMeta $meta, $value = null)
     {
         $this->meta = $meta;
         $this->value = $value;
     }
 
     /**
-     * @return Property
+     * @return PropertyMeta
      */
     public function getMeta()
     {
@@ -59,11 +59,22 @@ class Property
     {
         if (false === $this->meta->writable) {
             throw new PropertyAccessException(
-                sprintf('Property `%s->$%s` is not writable.', $this->meta->owner, $this->meta->name)
+                sprintf('Property `%s->$%s` is not writable.', $this->meta->owningClass, $this->meta->name)
             );
         }
 
         $this->set($value);
+    }
+
+    public function tryUnset()
+    {
+        if (false === $this->meta->writable) {
+            throw new PropertyAccessException(
+                sprintf('Property `%s->$%s` is not writable.', $this->meta->owningClass, $this->meta->name)
+            );
+        }
+
+        $this->value = null;
     }
 
     /**
@@ -74,7 +85,7 @@ class Property
     {
         if (false === $this->meta->readable) {
             throw new PropertyAccessException(
-                sprintf('Property `%s->$%s` is not readable.', $this->meta->owner, $this->meta->name)
+                sprintf('Property `%s->$%s` is not readable.', $this->meta->owningClass, $this->meta->name)
             );
         }
 

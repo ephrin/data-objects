@@ -1,18 +1,15 @@
 <?php
 
-namespace Ephrin\Immutable\Tests;
+namespace Ephrin\DataObject\Tests;
 
-use Ephrin\Immutable\Tests\Stubs\DataWithDefaultsInMethod;
-use Ephrin\Immutable\Tests\Stubs\PropertyWriteStub;
-use Ephrin\Immutable\Tests\Stubs\SimpleStub;
+use Ephrin\DataObject\Tests\Stubs\DataWithDefaultsInMethod;
+use Ephrin\DataObject\Tests\Stubs\PropertyWriteStub;
+use Ephrin\DataObject\Tests\Stubs\SimpleStub;
 
 class DocPropertiesTest extends \PHPUnit_Framework_TestCase
 {
     public function testReadConstructDefaults()
     {
-        // Class docBlock annotations
-        // @property string $stringProperty
-        // @property-read integer $integerProperty
         $simple = SimpleStub::fromArray(
             [
                 'stringProperty' => 'string', //usual
@@ -26,8 +23,6 @@ class DocPropertiesTest extends \PHPUnit_Framework_TestCase
 
     public function testWriteOnlyPropertyWrites()
     {
-        // Class annotations
-        // @property-write string $writeOnlyProperty
         $pws = new PropertyWriteStub(['writeOnlyProperty' => 'initial value']);
 
         self::assertSame('initial value', $pws->getWriteOnlyProperty());

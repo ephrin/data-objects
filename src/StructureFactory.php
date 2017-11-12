@@ -1,14 +1,9 @@
 <?php
 
-namespace Ephrin\Immutable;
+namespace Ephrin\DataObject;
 
 class StructureFactory
 {
-    /**
-     * @var array
-     */
-    private static $annotations = [];
-
     /**
      * @param MetaReader $driver
      * @param object $object
@@ -19,22 +14,16 @@ class StructureFactory
     public static function create(MetaReader $driver, $object, array $defaults = [])
     {
         $class = get_class($object);
-        if (!isset(self::$annotations[$class])) {
-            $properties = [];
-            foreach ($driver->readMeta($object) as $property) {
-                $property->valueGate = self::valueGateCallback($property->type, get_class($object), $property->name);
+        $properties = [];
+        foreach ($driver->readMeta($object) as $meta) {
+            $property = new Property(
+                $meta,
+                array_key_exists($meta->name, $defaults) ? $meta->pass($defaults[$meta->name]) : null
+            );
 
-                if (isset($defaults[$property->name])) {
-                    $property->defaultValue = call_user_func($property->valueGate, $defaults[$property->name]);
-                }
-
-                $properties[$property->name] = $property;
-            }
-            self::$annotations[$class] = $properties;
+            $properties[$meta->name] = $property;
         }
 
-        return new Structure($class, self::$annotations[$class], $defaults);
+        return new Structure($class, $properties, $defaults);
     }
-
-
 }

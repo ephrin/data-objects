@@ -1,7 +1,7 @@
 <?php
 require_once '../vendor/autoload.php';
 
-use Ephrin\Immutable\DocBlockProperties;
+use Ephrin\DataObject\DocBlockProperties;
 
 /**
  * @property-read string $data

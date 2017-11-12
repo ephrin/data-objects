@@ -1,11 +1,12 @@
 <?php
 
-class abra {
+error_reporting(E_ALL);
+
+class propless {
 
 }
+$pl = new propless();
 
-$a = new abra();
 
-$a->somePropety = 42;
-
-var_dump($a);
+var_dump(isset($pl->a));
+unset($pl->a);

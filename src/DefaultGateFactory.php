@@ -1,6 +1,8 @@
 <?php
 
-namespace Ephrin\Immutable;
+namespace Ephrin\DataObject;
+
+use Ephrin\DataObject\Type\Strict;
 
 class DefaultGateFactory
 {

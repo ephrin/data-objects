@@ -1,8 +1,8 @@
 <?php
 
-namespace Ephrin\Immutable;
+namespace Ephrin\DataObject;
 
-use Ephrin\Immutable\PropertyDriver\DocPropertyMetaReader;
+use Ephrin\DataObject\PropertyDriver\DocPropertyMetaReader;
 
 trait DocBlockProperties
 {
@@ -19,12 +19,17 @@ trait DocBlockProperties
      */
     public static function fromArray()
     {
+        static $reader;
+
+        if (!$reader) {
+            $reader = new DocPropertyMetaReader();
+        }
+
         $args = func_get_args();
         $data = array_shift($args);
         $instance = (new \ReflectionClass(static::class))->newInstanceArgs($args);
 
-        $driver = new DocPropertyMetaReader();
-        $instance->structure = StructureFactory::create($driver, $instance, $data);
+        $instance->structure = StructureFactory::create($reader, $instance, $data);
 
         return $instance;
     }
@@ -46,8 +51,8 @@ trait DocBlockProperties
      * @param string $name
      * @return mixed
      * @throws \InvalidArgumentException
-     * @throws \Ephrin\Immutable\Exception\NoSuchPropertyException
-     * @throws \Ephrin\Immutable\Exception\PropertyAccessException
+     * @throws \Ephrin\DataObject\Exception\NoSuchPropertyException
+     * @throws \Ephrin\DataObject\Exception\PropertyAccessException
      */
     public function __get($name)
     {
@@ -56,23 +61,21 @@ trait DocBlockProperties
 
     protected function getValue($propertyName)
     {
-        return $this->getStructure()->getProperty($propertyName)->value;
+        return $this->getStructure()->getProperty($propertyName)->get();
     }
 
     protected function setValue($propertyName, $value)
     {
-        $property = $this->getStructure()->getProperty($propertyName);
-
-        $property->value = call_user_func($property->valueGate, $value);
+        $this->getStructure()->getProperty($propertyName)->set($value);
     }
 
     /**
-     * @param $name
-     * @param $value
+     * @param string $name
+     * @param mixed $value
      */
     public function __set($name, $value)
     {
-        $this->getStructure()->trySet($name, $value);
+        $this->getStructure()->getProperty($name)->tryWrite($value);
     }
 
     /**
@@ -81,7 +84,13 @@ trait DocBlockProperties
      */
     public function __isset($name)
     {
-        return $this->getStructure()->issetValue($name);
+        $structure = $this->getStructure();
+
+        if ($structure->hasProperty($name)) {
+            return false === $this->getStructure()->getProperty($name)->equals(null);
+        }
+
+        return false;
     }
 
     /**
@@ -89,7 +98,10 @@ trait DocBlockProperties
      */
     public function __unset($name)
     {
-        $this->getStructure()->unsetValue($name);
+        $structure = $this->getStructure();
+        if ($structure->hasProperty($name)) {
+            $structure->getProperty($name)->tryUnset();
+        }
     }
 
     /**
