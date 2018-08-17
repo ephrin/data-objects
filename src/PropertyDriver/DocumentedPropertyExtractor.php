@@ -2,13 +2,13 @@
 
 namespace Ephrin\DataObject\PropertyDriver;
 
-use Ephrin\DataObject\Type\Immutable;
 use Ephrin\DataObject\MetaReader;
 use Ephrin\DataObject\PropertyMeta;
+use Ephrin\DataObject\Type\Immutable;
 use phpDocumentor\Reflection\DocBlock\Tags as phpDoc;
 use phpDocumentor\Reflection\DocBlockFactory;
 
-class DocPropertyMetaReader implements MetaReader
+class DocumentedPropertyExtractor implements MetaReader
 {
     /**
      * @var PropertyMeta[][]
@@ -36,18 +36,16 @@ class DocPropertyMetaReader implements MetaReader
         $comment = $reflection->getDocComment();
         $docBlock = DocBlockFactory::createInstance()->create($comment);
 
-        foreach (['property' => true, 'property-write' => true, 'property-read' => false] as $tag => $writable) {
+        foreach (['property', 'property-write', 'property-read'] as $tag) {
             foreach ($docBlock->getTagsByName($tag) as $item) {
                 /** @var phpDoc\Property|phpDoc\PropertyWrite|phpDoc\PropertyRead $item */
                 $type = strtolower($item->getType());
                 $propertyName = $item->getVariableName();
 
-                $meta = new PropertyMeta();
-                $meta->name = $propertyName;
-                $meta->type = $type;
+                $meta = new PropertyMeta($propertyName, $class, $type);
 
-                if ($instance instanceof Immutable){
-                    if($item instanceof phpDoc\PropertyWrite) {
+                if ($instance instanceof Immutable) {
+                    if ($item instanceof phpDoc\PropertyWrite) {
                         throw new \LogicException(
                             sprintf(
                                 'Mutable property `%s` of %s is declared (@%s) while object is immutable. ' .

@@ -24,6 +24,13 @@ class PropertyMeta
 
     protected $valueGate = [];
 
+    public function __construct(string $name, string $owningClass, string $type = null)
+    {
+        $this->name = $name;
+        $this->owningClass = $owningClass;
+        $this->type = $type;
+    }
+
     public function pass($value)
     {
         if (!isset($this->valueGate[$this->valueGateFactoryClass])) {
